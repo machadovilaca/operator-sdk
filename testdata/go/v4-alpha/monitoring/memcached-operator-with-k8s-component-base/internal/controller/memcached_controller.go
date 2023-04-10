@@ -37,6 +37,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	cachev1alpha1 "github.com/example/memcached-operator/api/v1alpha1"
+	"github.com/example/memcached-operator/monitoring/metrics"
 )
 
 const memcachedFinalizer = "cache.example.com/finalizer"
@@ -81,6 +82,9 @@ type MemcachedReconciler struct {
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.14.1/pkg/reconcile
 func (r *MemcachedReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := log.FromContext(ctx)
+
+	metrics.IncrementReconcileCountMetric()
+	metrics.IncrementReconcileActionMetric("loop")
 
 	// Fetch the Memcached instance
 	// The purpose is check if the Custom Resource for the Kind Memcached

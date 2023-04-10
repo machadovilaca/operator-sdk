@@ -30,9 +30,11 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
+	runtimemetrics "sigs.k8s.io/controller-runtime/pkg/metrics"
 
 	cachev1alpha1 "github.com/example/memcached-operator/api/v1alpha1"
 	"github.com/example/memcached-operator/internal/controller"
+	"github.com/example/memcached-operator/monitoring/metrics"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -112,9 +114,23 @@ func main() {
 		os.Exit(1)
 	}
 
+	setupMonitoring(mgr)
+
 	setupLog.Info("starting manager")
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
 		setupLog.Error(err, "problem running manager")
 		os.Exit(1)
 	}
+}
+
+func setupMonitoring(mgr ctrl.Manager) {
+	setupLog.Info("setting up monitoring")
+	runtimemetrics.Registry = metrics.NewRegistry()
+
+	// Setup resources needed by the collectors
+	metrics.SetupCustomResourceCollector(mgr.GetClient())
+
+	// TODO: remove -> Quick test for metrics incrementation
+	metrics.IncrementReconcileCountMetric()
+	metrics.IncrementReconcileActionMetric("init")
 }
