@@ -31,6 +31,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
+	"github.com/example/memcached-operator/monitoring/metrics"
+
 	cachev1alpha1 "github.com/example/memcached-operator/api/v1alpha1"
 	"github.com/example/memcached-operator/internal/controller"
 	//+kubebuilder:scaffold:imports
@@ -111,6 +113,14 @@ func main() {
 		setupLog.Error(err, "unable to set up ready check")
 		os.Exit(1)
 	}
+
+	setupLog.Info("setting up monitoring")
+	metrics.SetupMetrics()
+	metrics.SetupCustomResourceCollector(mgr.GetClient())
+
+	// TODO: remove -> Quick test for metrics incrementation
+	metrics.IncrementReconcileCountMetric()
+	metrics.IncrementReconcileActionMetric("init")
 
 	setupLog.Info("starting manager")
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {

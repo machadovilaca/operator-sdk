@@ -261,3 +261,9 @@ catalog-build: opm ## Build a catalog image.
 .PHONY: catalog-push
 catalog-push: ## Push a catalog image.
 	$(MAKE) docker-push IMG=$(CATALOG_IMG)
+
+# Generate metrics documentation
+.PHONY: gen-metrics-doc
+gen-metrics-doc:
+	mkdir -p docs
+	go run monitoring/docs/docs.go > docs/metrics.md
