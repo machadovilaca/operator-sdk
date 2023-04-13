@@ -33,6 +33,7 @@ import (
 
 	cachev1alpha1 "github.com/example/memcached-operator/api/v1alpha1"
 	"github.com/example/memcached-operator/internal/controller"
+	"github.com/example/memcached-operator/monitoring/metrics"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -110,6 +111,24 @@ func main() {
 	if err := mgr.AddReadyzCheck("readyz", healthz.Ping); err != nil {
 		setupLog.Error(err, "unable to set up ready check")
 		os.Exit(1)
+	}
+
+	setupLog.Info("setting up monitoring")
+	metrics.SetupMetrics()
+	metrics.SetupCustomResourceCollector(mgr.GetClient())
+
+	// FIXME: quick test metrics
+	err = metrics.IncrementReconcileCountMetric()
+	if err != nil {
+		panic(err)
+	}
+	err = metrics.IncrementReconcileActionMetric("init")
+	if err != nil {
+		panic(err)
+	}
+	err = metrics.ObserveHistogramExampleMetric("test", 1.0)
+	if err != nil {
+		panic(err)
 	}
 
 	setupLog.Info("starting manager")
