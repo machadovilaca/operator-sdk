@@ -17,6 +17,7 @@ limitations under the License.
 package main
 
 import (
+	"context"
 	"flag"
 	"os"
 
@@ -28,11 +29,16 @@ import (
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
+	"github.com/machadovilaca/operator-observability/pkg/operatorrules"
+
 	cachev1alpha1 "github.com/example/memcached-operator/api/v1alpha1"
 	"github.com/example/memcached-operator/internal/controller"
+	"github.com/example/memcached-operator/internal/monitoring/metrics"
+	"github.com/example/memcached-operator/internal/monitoring/rules"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -111,6 +117,29 @@ func main() {
 		setupLog.Error(err, "unable to set up ready check")
 		os.Exit(1)
 	}
+
+	setupLog.Info("setting up monitoring")
+	metrics.SetupCustomResourceCollector(mgr.GetClient())
+
+	metrics.SetupMetrics()
+	rules.SetupRules()
+
+	// examples to be performed in reconcile loop {
+	_ = operatorrules.AddToScheme(mgr.GetScheme())
+	objects := make([]client.Object, 3)
+	objects[0], _ = operatorrules.BuildPrometheusRule("memcached-operator-prometheus-rules", "default", map[string]string{"app": "memcached-operator"})
+	objects[1], objects[2] = operatorrules.BuildRoleAndRoleBinding("memcached-operator", "default", "prometheus-k8s", "monitoring", map[string]string{"app": "memcached-operator"})
+
+	for _, object := range objects {
+		err = mgr.GetClient().Create(context.Background(), object)
+		if err != nil {
+			setupLog.Error(err, "unable to create object", "object", object)
+		}
+	}
+
+	metrics.IncrementReconcileCountMetric()
+	metrics.IncrementReconcileActionMetric("update")
+	// }
 
 	setupLog.Info("starting manager")
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {

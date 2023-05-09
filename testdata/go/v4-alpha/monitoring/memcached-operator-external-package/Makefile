@@ -261,3 +261,10 @@ catalog-build: opm ## Build a catalog image.
 .PHONY: catalog-push
 catalog-push: ## Push a catalog image.
 	$(MAKE) docker-push IMG=$(CATALOG_IMG)
+
+# Generate metrics, recording rules, and alerts documentation
+.PHONY: gen-observability-docs
+gen-observability-docs:
+	mkdir -p docs
+	go run ./internal/monitoring/docs --metrics > docs/metrics.md
+	go run ./internal/monitoring/docs --alerts > docs/alerts.md
